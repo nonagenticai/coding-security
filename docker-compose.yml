@@ -1,0 +1,61 @@
+services:
+  coding-security:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: coding-security
+
+    environment:
+      SERVICE_NAME: coding-security
+      VERSION: 1.0.0
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+      PORT: 8693
+      DEFAULT_TENANT_ID: n8n-dev
+      ENABLE_AUTH: "true"
+      ENABLE_DOCS: "true"
+
+      # Database
+      DATABASE_URL: postgresql+psycopg://coding:${POSTGRES_PASSWORD:-coding}@postgres:5432/code_graph
+      PGBOUNCER_URL: postgresql+psycopg://coding:${POSTGRES_PASSWORD:-coding}@pgbouncer.pgbouncer.svc.cluster.local:6432/code_graph
+
+      # Redis
+      REDIS_URL: redis://code-graph-redis:6379/0
+
+      # OpenTelemetry
+      OTLP_TRACES_ENDPOINT: http://grafana-agent:4318/v1/traces
+      OTEL_SERVICE_NAME: coding-security
+      OTEL_SDK_DISABLED: "false"
+
+      # Docker Registry (for image scanning)
+      DOCKER_REGISTRY_URL: 192.168.1.114:5000
+      DOCKER_REGISTRY_USERNAME: registry
+      DOCKER_REGISTRY_PASSWORD: ${REGISTRY_PASSWORD}
+
+      # Trivy / Grype registry auth
+      TRIVY_USERNAME: registry
+      TRIVY_PASSWORD: ${REGISTRY_PASSWORD}
+      TRIVY_INSECURE: "true"
+      GRYPE_REGISTRY_AUTH_USERNAME: registry
+      GRYPE_REGISTRY_AUTH_PASSWORD: ${REGISTRY_PASSWORD}
+
+    ports:
+      - "0.0.0.0:8693:8693"
+
+    networks:
+      - workflow-system-network
+
+    restart: unless-stopped
+
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8693/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  workflow-system-network:
+    driver: bridge

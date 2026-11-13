@@ -1,0 +1,354 @@
+{
+ "ast_call_severity": {
+  "__import__": "medium",
+  "compile": "high",
+  "eval": "critical",
+  "exec": "critical"
+ },
+ "ast_import_severity": {
+  "from base64 import": "high",
+  "from codecs import": "high",
+  "from ctypes import": "high",
+  "from dill import": "high",
+  "from fcntl import": "high",
+  "from ftplib import": "high",
+  "from httplib import": "high",
+  "from httplib2 import": "high",
+  "from imaplib import": "high",
+  "from marshal import": "high",
+  "from mmap import": "high",
+  "from os import": "high",
+  "from pickle import": "high",
+  "from poplib import": "high",
+  "from pty import": "high",
+  "from requests import": "high",
+  "from shelve import": "high",
+  "from shutil import": "high",
+  "from smtplib import": "high",
+  "from socket import": "high",
+  "from subprocess import": "high",
+  "from sys import": "high",
+  "from telnetlib import": "high",
+  "from tempfile import": "high",
+  "from urllib import": "high",
+  "from urllib2 import": "high",
+  "import base64": "high",
+  "import codecs": "high",
+  "import ctypes": "high",
+  "import dill": "high",
+  "import fcntl": "high",
+  "import ftplib": "high",
+  "import httplib": "high",
+  "import httplib2": "high",
+  "import imaplib": "high",
+  "import marshal": "high",
+  "import mmap": "high",
+  "import os": "high",
+  "import pickle": "high",
+  "import poplib": "high",
+  "import pty": "high",
+  "import requests": "high",
+  "import shelve": "high",
+  "import shutil": "high",
+  "import smtplib": "high",
+  "import socket": "high",
+  "import subprocess": "high",
+  "import sys": "high",
+  "import telnetlib": "high",
+  "import tempfile": "high",
+  "import urllib": "high",
+  "import urllib2": "high"
+ },
+ "dangerous_patterns": {
+  "javascript": [
+   {
+    "pattern": "eval\\s*\\(",
+    "severity": "critical"
+   },
+   {
+    "pattern": "Function\\s*\\(",
+    "severity": "high"
+   },
+   {
+    "pattern": "require\\s*\\(",
+    "severity": "medium"
+   },
+   {
+    "pattern": "process\\.",
+    "severity": "high"
+   },
+   {
+    "pattern": "new\\s+Function\\s*\\(",
+    "severity": "critical"
+   },
+   {
+    "pattern": "setTimeout\\s*\\(\\s*[\\\"']",
+    "severity": "high"
+   },
+   {
+    "pattern": "setInterval\\s*\\(\\s*[\\\"']",
+    "severity": "high"
+   },
+   {
+    "pattern": "document\\.write\\s*\\(",
+    "severity": "medium"
+   },
+   {
+    "pattern": "innerHTML\\s*=",
+    "severity": "medium"
+   },
+   {
+    "pattern": "window\\[",
+    "severity": "medium"
+   }
+  ],
+  "python": [
+   {
+    "pattern": "import\\s+os\\b",
+    "severity": "high"
+   },
+   {
+    "pattern": "os\\.system\\s*\\(",
+    "severity": "critical"
+   },
+   {
+    "pattern": "subprocess\\.",
+    "severity": "critical"
+   },
+   {
+    "pattern": "eval\\s*\\(",
+    "severity": "critical"
+   },
+   {
+    "pattern": "exec\\s*\\(",
+    "severity": "critical"
+   },
+   {
+    "pattern": "__import__\\s*\\(",
+    "severity": "high"
+   },
+   {
+    "pattern": "open\\s*\\(",
+    "severity": "medium"
+   },
+   {
+    "pattern": "__builtins__",
+    "severity": "critical"
+   },
+   {
+    "pattern": "globals\\s*\\(\\s*\\)",
+    "severity": "high"
+   },
+   {
+    "pattern": "locals\\s*\\(\\s*\\)",
+    "severity": "medium"
+   },
+   {
+    "pattern": "compile\\s*\\(",
+    "severity": "critical"
+   },
+   {
+    "pattern": "getattr\\s*\\(",
+    "severity": "medium"
+   },
+   {
+    "pattern": "setattr\\s*\\(",
+    "severity": "medium"
+   },
+   {
+    "pattern": "delattr\\s*\\(",
+    "severity": "medium"
+   },
+   {
+    "pattern": "hasattr\\s*\\(",
+    "severity": "low"
+   }
+  ]
+ },
+ "detector_patterns": {
+  "buffer_overflow_c_1": {
+   "code_patterns": [
+    "strcpy\\s*\\(",
+    "strcat\\s*\\(",
+    "sprintf\\s*\\(",
+    "gets\\s*\\("
+   ],
+   "language": "cpp",
+   "severity": "critical"
+  },
+  "command_injection_java_1": {
+   "code_patterns": [
+    "Runtime\\.getRuntime\\(\\)\\.exec\\s*\\([^)]*\\+.*\\)",
+    "ProcessBuilder\\s*\\([^)]*\\+.*\\)"
+   ],
+   "language": "java",
+   "severity": "critical"
+  },
+  "command_injection_python_1": {
+   "code_patterns": [
+    "os\\.system\\s*\\([^)]*\\+.*\\)",
+    "subprocess\\.call\\s*\\([^)]*shell\\s*=\\s*True[^)]*\\+",
+    "subprocess\\.run\\s*\\([^)]*shell\\s*=\\s*True[^)]*\\+",
+    "subprocess\\.(?:run|call|Popen)\\s*\\(\\s*[^\"'\\s)][^)]*shell\\s*=\\s*True"
+   ],
+   "language": "python",
+   "severity": "critical"
+  },
+  "hardcoded_password_1": {
+   "code_patterns": [
+    "password\\s*=\\s*[\"\\'][^\"\\']{8,}[\"\\']",
+    "api_key\\s*=\\s*[\"\\'][^\"\\']{16,}[\"\\']",
+    "secret\\s*=\\s*[\"\\'][^\"\\']{8,}[\"\\']",
+    "token\\s*=\\s*[\"\\'][^\"\\']{16,}[\"\\']"
+   ],
+   "language": "any",
+   "severity": "high"
+  },
+  "insecure_deserialization_java_1": {
+   "code_patterns": [
+    "readObject\\s*\\(\\)",
+    "ObjectInputStream.*read",
+    "XMLDecoder.*read"
+   ],
+   "language": "java",
+   "severity": "high"
+  },
+  "ldap_injection_generic_1": {
+   "code_patterns": [
+    "LdapName.*new.*\\+|DirContext.*search.*\\+",
+    "FilterEncoder|LdapContext.*search"
+   ],
+   "language": "java",
+   "severity": "high"
+  },
+  "log4shell_cve_2021_44228_1": {
+   "code_patterns": [
+    "import\\s+org\\.apache\\.logging\\.log4j",
+    "log4j.*2\\.(0-16|16\\.\\d+)",
+    "LoggerFactory\\.getLogger\\(.*\\)\\s*\\.(?:debug|info|warn|error)\\s*\\("
+   ],
+   "language": "java",
+   "severity": "critical"
+  },
+  "path_traversal_generic_1": {
+   "code_patterns": [
+    "open\\s*\\(.*[\"\\'][\\.]\\.[/\\\\]",
+    "File\\s*\\(.*[\"\\'][\\.]\\.[/\\\\]",
+    "readFile.*\\+|readFile.*\\{|readFile.*template"
+   ],
+   "language": "any",
+   "severity": "high"
+  },
+  "spring4shell_cve_2022_22965_1": {
+   "code_patterns": [
+    "org\\.springframework\\.web\\.bind",
+    "WebDataBinder.*bindingResult",
+    "ModelAttributeMethodProcessor",
+    "@Controller|@RestController.*@RequestMapping"
+   ],
+   "language": "java",
+   "severity": "critical"
+  },
+  "sql_injection_java_1": {
+   "code_patterns": [
+    "Statement.*createStatement\\(\\)",
+    "\\.executeQuery\\s*\\(\\s*[\"\\'][^\"\\']*\\+.*[\"\\']"
+   ],
+   "language": "java",
+   "severity": "high"
+  },
+  "sql_injection_python_1": {
+   "code_patterns": [
+    "\\.execute\\s*\\(\\s*[\"\\'][^\"\\']*[\"\\']\\s*\\+",
+    "\\.execute\\s*\\(\\s*\\w+\\s*\\+\\s*[\"\\']",
+    "\\.execute\\s*\\(\\s*f[\"\\'][^\"\\']*{[^}]+}[^\"\\']*[\"\\']",
+    "\\.execute\\s*\\(\\s*[\"\\'][^\"\\']*[\"\\']\\.format\\s*\\(",
+    "\\.execute\\s*\\(\\s*[\"\\'][^\"\\']*%[sd][^\"\\']*[\"\\']\\s*%"
+   ],
+   "language": "python",
+   "severity": "high"
+  },
+  "weak_crypto_python_1": {
+   "code_patterns": [
+    "hashlib\\.md5\\s*\\(",
+    "hashlib\\.sha1\\s*\\(",
+    "Crypto\\.Cipher\\.DES",
+    "Crypto\\.Cipher\\.ARC4"
+   ],
+   "language": "python",
+   "severity": "medium"
+  },
+  "xml_injection_generic_1": {
+   "code_patterns": [
+    "DocumentBuilderFactory|SAXParserFactory|XMLInputFactory",
+    "setFeature.*XMLConstants\\.ACCESS_EXTERNAL",
+    "XXE|DOCTYPE.*ENTITY"
+   ],
+   "language": "java",
+   "severity": "high"
+  },
+  "xss_javascript_1": {
+   "code_patterns": [
+    "\\.innerHTML\\s*=\\s*[^;]*(?:location|document\\.URL|window\\.location)",
+    "\\.innerHTML\\s*=\\s*.*\\+.*"
+   ],
+   "language": "javascript",
+   "severity": "medium"
+  },
+  "xss_python_1": {
+   "code_patterns": [
+    "render_template_string\\s*\\([^)]*request\\.",
+    "Template\\([^)]*\\)\\.render\\([^)]*request\\."
+   ],
+   "language": "python",
+   "severity": "medium"
+  }
+ },
+ "js_global_access_severity": {
+  "global['a']": "medium",
+  "this['a']": "medium",
+  "window['a']": "medium"
+ },
+ "js_import_severity": {
+  "import x from 'child_process'": "high",
+  "import x from 'cluster'": "high",
+  "import x from 'dgram'": "high",
+  "import x from 'dns'": "high",
+  "import x from 'fs'": "high",
+  "import x from 'http'": "high",
+  "import x from 'https'": "high",
+  "import x from 'net'": "high",
+  "import x from 'os'": "high",
+  "import x from 'process'": "high",
+  "import x from 'tls'": "high",
+  "import x from 'vm'": "high",
+  "import x from 'worker_threads'": "high",
+  "import('child_process')": "high",
+  "import('cluster')": "high",
+  "import('dgram')": "high",
+  "import('dns')": "high",
+  "import('fs')": "high",
+  "import('http')": "high",
+  "import('https')": "high",
+  "import('net')": "high",
+  "import('os')": "high",
+  "import('process')": "high",
+  "import('tls')": "high",
+  "import('vm')": "high",
+  "import('worker_threads')": "high",
+  "require('child_process')": "high",
+  "require('cluster')": "high",
+  "require('dgram')": "high",
+  "require('dns')": "high",
+  "require('fs')": "high",
+  "require('http')": "high",
+  "require('https')": "high",
+  "require('net')": "high",
+  "require('os')": "high",
+  "require('process')": "high",
+  "require('tls')": "high",
+  "require('vm')": "high",
+  "require('worker_threads')": "high"
+ },
+ "source": "git show 0679e93 (origin/main) src/"
+}

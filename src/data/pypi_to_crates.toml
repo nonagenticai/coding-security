@@ -1,0 +1,319 @@
+# PyPI package -> Rust crate(s) that replace it in a py2rust port.
+#
+# Read by services/rust_crate_map.py and served as `rust_crate_map` on
+# POST /api/security/sbom/{container_name}/dependencies. Facts only: the plan
+# agent still chooses, and a package absent from this file is reported as
+# `unmapped`, never guessed.
+#
+# Rules (enforced by tests/unit/test_rust_crate_map.py against this file):
+# * key = PEP 503-normalised PyPI name (lowercase, runs of -_. -> "-")
+# * crates = crates.io names exactly as published (serde_json, not serde-json)
+# * crates = Cargo.toml [dependencies] / [dev-dependencies] entries only
+# * tools = optional; binaries installed with `cargo install`, never a dependency
+# * crates = [] and no tools = nothing to add (std / language / toolchain); `note` says which
+# * bump map_version on every change
+map_version = "2026-11-04.2"
+
+# ── web / HTTP server ───────────────────────────────────────────────────────
+[packages.fastapi]
+crates = ["axum"]
+note = "OpenAPI generation: utoipa"
+
+[packages.starlette]
+crates = ["axum", "tower-http"]
+note = "middleware (CORS, compression, tracing) from tower-http"
+
+[packages.flask]
+crates = ["axum"]
+
+[packages.uvicorn]
+crates = ["tokio", "axum"]
+note = "axum::serve on a tokio runtime"
+
+[packages.gunicorn]
+crates = ["tokio", "axum"]
+note = "no prefork worker model: one multi-threaded tokio runtime"
+
+[packages.python-multipart]
+crates = ["axum"]
+note = "axum `multipart` feature (axum::extract::Multipart)"
+
+[packages.websockets]
+crates = ["tokio-tungstenite"]
+
+# ── HTTP clients ────────────────────────────────────────────────────────────
+[packages.httpx]
+crates = ["reqwest"]
+note = "in-process app tests: tower::ServiceExt::oneshot on the axum Router"
+
+[packages.requests]
+crates = ["reqwest"]
+note = "`blocking` feature for sync callers"
+
+[packages.aiohttp]
+crates = ["reqwest"]
+note = "client side; an aiohttp server maps to axum"
+
+# ── data models / serialisation ─────────────────────────────────────────────
+[packages.pydantic]
+crates = ["serde", "validator"]
+
+[packages.pydantic-settings]
+crates = ["config"]
+note = "alternatives: figment, envy"
+
+[packages.python-dotenv]
+crates = ["dotenvy"]
+
+[packages.attrs]
+crates = []
+note = "language: plain structs + derive"
+
+[packages.orjson]
+crates = ["serde_json"]
+
+[packages.ujson]
+crates = ["serde_json"]
+
+[packages.simplejson]
+crates = ["serde_json"]
+
+[packages.pyyaml]
+crates = ["serde_yaml"]
+note = "serde_yaml is archived upstream (2024); maintained forks exist (serde_yml, serde_norway)"
+
+[packages.toml]
+crates = ["toml"]
+
+[packages.tomli]
+crates = ["toml"]
+
+[packages.tomli-w]
+crates = ["toml"]
+
+[packages.tomlkit]
+crates = ["toml_edit"]
+note = "format-preserving edits"
+
+[packages.msgpack]
+crates = ["rmp-serde"]
+
+[packages.jsonschema]
+crates = ["jsonschema"]
+
+[packages.protobuf]
+crates = ["prost"]
+
+[packages.grpcio]
+crates = ["tonic"]
+
+# ── databases ───────────────────────────────────────────────────────────────
+[packages.sqlalchemy]
+crates = ["sqlx"]
+note = "sqlx is SQL-first, not an ORM; ORM options: sea-orm, diesel"
+
+[packages.psycopg]
+crates = ["sqlx"]
+note = "`postgres` feature; lower-level alternative: tokio-postgres"
+
+[packages.psycopg2]
+crates = ["sqlx"]
+note = "`postgres` feature; lower-level alternative: tokio-postgres"
+
+[packages.psycopg2-binary]
+crates = ["sqlx"]
+note = "`postgres` feature; lower-level alternative: tokio-postgres"
+
+[packages.asyncpg]
+crates = ["sqlx"]
+note = "`postgres` feature"
+
+[packages.alembic]
+crates = ["sqlx"]
+note = "sqlx migrations: sqlx::migrate! + sqlx-cli (`sqlx migrate`)"
+
+[packages.redis]
+crates = ["redis"]
+
+[packages.neo4j]
+crates = ["neo4rs"]
+
+# ── CLI / config ────────────────────────────────────────────────────────────
+[packages.click]
+crates = ["clap"]
+
+[packages.typer]
+crates = ["clap"]
+note = "`derive` feature"
+
+[packages.tqdm]
+crates = ["indicatif"]
+
+# ── async / concurrency ─────────────────────────────────────────────────────
+[packages.anyio]
+crates = ["tokio"]
+
+[packages.aiofiles]
+crates = ["tokio"]
+note = "tokio::fs"
+
+[packages.tenacity]
+crates = ["backon"]
+note = "the older `backoff` crate is unmaintained"
+
+[packages.backoff]
+crates = ["backon"]
+note = "the older `backoff` crate is unmaintained"
+
+[packages.cachetools]
+crates = ["moka"]
+
+# ── time ────────────────────────────────────────────────────────────────────
+[packages.python-dateutil]
+crates = ["chrono"]
+
+[packages.arrow]
+crates = ["chrono"]
+
+[packages.pendulum]
+crates = ["chrono"]
+
+[packages.pytz]
+crates = ["chrono-tz"]
+
+[packages.tzdata]
+crates = ["chrono-tz"]
+
+# ── templating / text / markup ──────────────────────────────────────────────
+[packages.jinja2]
+crates = ["minijinja"]
+
+[packages.regex]
+crates = ["regex"]
+note = "no lookaround or backreferences; fancy-regex has them"
+
+[packages.markdown]
+crates = ["pulldown-cmark"]
+
+[packages.lxml]
+crates = ["quick-xml"]
+
+[packages.beautifulsoup4]
+crates = ["scraper"]
+
+# ── logging / observability ─────────────────────────────────────────────────
+[packages.structlog]
+crates = ["tracing", "tracing-subscriber"]
+
+[packages.loguru]
+crates = ["tracing", "tracing-subscriber"]
+
+[packages.prometheus-client]
+crates = ["prometheus-client"]
+
+[packages.opentelemetry-api]
+crates = ["opentelemetry"]
+
+[packages.opentelemetry-sdk]
+crates = ["opentelemetry", "opentelemetry_sdk"]
+
+# ── security / auth ─────────────────────────────────────────────────────────
+[packages.pyjwt]
+crates = ["jsonwebtoken"]
+
+[packages.bcrypt]
+crates = ["bcrypt"]
+
+# ── cloud / infra clients ───────────────────────────────────────────────────
+[packages.boto3]
+crates = ["aws-config", "aws-sdk-s3"]
+note = "one aws-sdk-<service> crate per AWS service used; s3 is only the common case"
+
+[packages.botocore]
+crates = ["aws-config"]
+note = "pulled in by boto3; the per-service aws-sdk-* crates carry the clients"
+
+[packages.docker]
+crates = ["bollard"]
+
+[packages.kubernetes]
+crates = ["kube", "k8s-openapi"]
+
+[packages.psutil]
+crates = ["sysinfo"]
+
+# ── numeric / data ──────────────────────────────────────────────────────────
+[packages.numpy]
+crates = ["ndarray"]
+
+[packages.pandas]
+crates = ["polars"]
+
+[packages.networkx]
+crates = ["petgraph"]
+
+[packages.pillow]
+crates = ["image"]
+
+# ── std / language: nothing to add ──────────────────────────────────────────
+[packages.typing-extensions]
+crates = []
+note = "std: no crate needed"
+
+[packages.six]
+crates = []
+note = "Python 2/3 compatibility shim: nothing to port"
+
+[packages.dataclasses]
+crates = []
+note = "language: plain structs"
+
+# ── test / dev tooling ──────────────────────────────────────────────────────
+[packages.pytest]
+crates = []
+tools = ["cargo-nextest"]
+note = "tests use built-in #[test]; cargo-nextest is an optional runner"
+
+[packages.pytest-asyncio]
+crates = ["tokio"]
+note = "dev-dependency: #[tokio::test] (`macros` + `rt` features)"
+
+[packages.pytest-xdist]
+crates = []
+note = "toolchain: cargo test / cargo-nextest run tests in parallel by default"
+
+[packages.pytest-cov]
+crates = []
+tools = ["cargo-llvm-cov"]
+
+[packages.pytest-mock]
+crates = ["mockall"]
+note = "dev-dependency"
+
+[packages.hypothesis]
+crates = ["proptest"]
+note = "dev-dependency"
+
+[packages.ruff]
+crates = []
+note = "toolchain: cargo clippy + rustfmt"
+
+[packages.black]
+crates = []
+note = "toolchain: rustfmt"
+
+[packages.mypy]
+crates = []
+note = "toolchain: the compiler type-checks"
+
+[packages.ty]
+crates = []
+note = "toolchain: the compiler type-checks"
+
+[packages.pyright]
+crates = []
+note = "toolchain: the compiler type-checks"
+
+[packages.pip-audit]
+crates = []
+tools = ["cargo-audit"]

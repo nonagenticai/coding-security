@@ -1,0 +1,12 @@
+[package]
+name = "vulnproj"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+smallvec = "=1.6.0"
+unicode-normalization = "=0.1.8"
+time = { path = "time" }
+
+[dev-dependencies]
+static_assertions = "1"

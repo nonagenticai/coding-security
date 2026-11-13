@@ -1,0 +1,14 @@
+# Vendored fixture for the opt-in live IaC test (tests/unit/test_iac_scanner.py).
+# Deliberately insecure: runs as root (no USER directive) and uses a :latest tag
+# -> trivy config reports HIGH/MEDIUM misconfigurations (e.g. AVD-DS-0002 root
+# user, AVD-DS-0001 :latest). The live test copies this content to a tmp file
+# named "Dockerfile" so trivy's filename heuristic detects it.
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y curl
+
+COPY . /app
+WORKDIR /app
+
+# No USER directive -> container runs as root (AVD-DS-0002).
+CMD ["/app/run.sh"]

@@ -1,0 +1,65 @@
+name: CI
+
+# The public pipeline: nonagenticai/ci-workflows/python-service.yml on GitHub-hosted runners,
+# with no repository secrets, publishing ghcr.io/nonagenticai/coding-security from main.
+#
+# There is no deploy job. Flux watches the ImagePolicy for this service and rolls it when the
+# image changes — the repo never holds cluster credentials.
+#
+# While this repository was private it ran the private deployment archetype; that job is gone
+# rather than gated because GitHub parses a called workflow even when the calling job's `if:`
+# is false, so a public repository that keeps a private `uses:` cannot dispatch CI at all.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  # Weekly rebuild: the image bakes an offline OSV/trivy CVE database at build time, and the
+  # pod has no egress to refresh it. Staleness is asserted below, so this is what keeps it fresh.
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: nonagenticai/ci-workflows/.github/workflows/python-service.yml@main
+    permissions:
+      contents: read
+      packages: write
+    with:
+      image_name: coding-security
+      src_dir: src
+      # Real redis for tests/unit/test_redis_idle_poll_real.py.
+      has_redis: true
+      # This image is heavy (baked offline OSV CVE DB + multi-stage apt/uv layers). A cancelled
+      # build reports as *pending*, not red, so it needs headroom rather than a tight cap.
+      build_timeout_minutes: 60
+      # The image we just built MUST carry a FRESH OSV/trivy database. This is the reader for
+      # /health's osv_db signal, and promotion depends on this job: a stale-DB image can never
+      # become :latest.
+      build_smoke: |
+        set -euo pipefail
+        docker run -d --name smoke-coding-security \
+          -e ENABLE_AUTH=false \
+          -e ENVIRONMENT=testing \
+          -e REDIS_URL=redis://localhost:6379/0 \
+          -p 18693:8693 "$IMAGE_REF"
+        ok=0
+        health=""
+        for i in $(seq 1 30); do
+          if health=$(curl -sf http://localhost:18693/health 2>/dev/null); then
+            echo "health ok (attempt $i)"; ok=1; break
+          fi
+          sleep 1
+        done
+        docker logs smoke-coding-security || true
+        docker rm -f smoke-coding-security || true
+        [ "$ok" -eq 1 ]
+        echo "$health" | jq -e '.osv_db.present == true and .osv_db.stale == false' >/dev/null || {
+          echo "::error::baked OSV DB absent or stale in the image just built: $(echo "$health" | jq -c '.osv_db')"
+          exit 1
+        }
+        echo "osv_db: $(echo "$health" | jq -c '.osv_db')"

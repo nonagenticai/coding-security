@@ -1,0 +1,12 @@
+[project]
+name = "pyproj"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dateutil>=2.8",
+    # a git source: not a PyPI package, must not be listed as pkg:pypi
+    "six @ git+https://github.com/benjaminp/six@1.17.0",
+]
+
+[dependency-groups]
+dev = ["iniconfig>=2"]

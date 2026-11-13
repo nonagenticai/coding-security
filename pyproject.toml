@@ -1,0 +1,122 @@
+[project]
+name = "coding-security"
+version = "1.2.0"
+license = { text = "Apache-2.0" }
+description = "Security Analysis Service - vulnerability scanning, dependency analysis, security detection"
+authors = [{name = "Nonagentic", email = "dev@nonagentic.ai"}]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.162.0",
+    "starlette>=1.10.0",  # PYSEC-2026-161 (transitive via fastapi; pin floor to clear pip-audit)
+    "pyasn1>=0.6.5",  # PYSEC-2026-3455/3456/3457 (fixed in 0.6.4) + CVE-2026-119194..119197 (fixed in 0.6.5); transitive via google-auth->pyasn1-modules
+    "mcp>=1.30.0",  # CVE-2026-59951 (transitive via coding-client -> pydantic-ai -> fastmcp; pin floor to clear pip-audit)
+    "fastmcp>=3.4.11",  # GHSA-7xgj-8392-5q4r (transitive via coding-client -> pydantic-ai)
+    "filelock>=4.2.4",  # CVE-2026-112940/112913/112907 (transitive; prevent vulnerable re-resolution)
+    "aiohttp>=3.14.5",  # CVE-2026-111063/111064, GHSA-2g87-pp6c-29x5 (transitive via pydantic-ai -> xai-sdk; pin floor to clear pip-audit)
+    "uvicorn[standard]>=0.54.0",
+    "gunicorn>=26.2.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "httpx>=0.28.1",
+    "redis>=8.1.0",
+    "structlog>=26.1.0",
+    "coding-client>=1.20.0",  # >=1.19.0: CodingWorkspacesClient — the canonical typed workspace client; every workspace call in this service goes through it so route paths and query-param names are spelled once, in the SDK, instead of hand-built per call site. >=1.17.0: setup_tracing() — refuses a post-startup call, which is how this service's own tracing exported nothing for months. >=1.11.0: outbound helpers take `service_token=`, so this service can vouch for a customer tenant (Authorization = our own licence, X-Tenant-Id = the customer)
+    # OpenTelemetry
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
+    "opentelemetry-instrumentation-fastapi>=0.66b1",
+    "opentelemetry-instrumentation-httpx>=0.66b1",
+    "packaging>=25.0",
+    "pip-audit>=2.10.1",
+    # Real source-SAST + secret engines (runtime: must ship in the --no-dev venv)
+    "bandit>=1.9.4",
+    "detect-secrets>=1.5.0",
+    # Timeout-capable regex engine: main-equivalent unbounded detector patterns
+    # run under a per-call timeout (security_detector._UNBOUNDED_ORIGINALS).
+    "regex>=2026.9.29",
+    # NOTE: semgrep (multi-language SAST) is intentionally NOT a project dep — it
+    # pins rich<13.6 which is irreconcilable with coding-client -> pydantic-ai ->
+    # fastmcp-slim (rich>=13.9.4). The scanner shells out to the `semgrep` CLI
+    # (never imports it), so semgrep is installed as an ISOLATED CLI on PATH in
+    # the Dockerfile (alongside Trivy/Grype/Syft), keeping the app venv clean.
+    "pyyaml>=6.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=7.1.0",
+    "ruff==0.17.2",
+    "fakeredis[lua]>=2.40.0",
+    "ty==0.0.92",
+]
+
+[build-system]
+requires = ["setuptools>=84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=7.1.0",
+    "ruff==0.17.2",
+    "detect-secrets>=1.5.0",
+    "fakeredis[lua]>=2.40.0",
+    "ty==0.0.92",
+    # PYSEC-2026-3721: pip 26.1.2 is vulnerable (transitive via pip-audit -> pip-api -> pip); explicit floor so a re-lock cannot regress
+    "pip>=26.2.2",
+    "pytest-xdist>=3.8.0",
+]
+
+[tool.uv.sources]
+coding-client = { git = "https://github.com/nonagenticai/coding-client", rev = "f7f25b4e81fe4390586108a7a731608dacf462fd" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.rules]
+unresolved-import = "ignore"
+
+[tool.bandit]
+# Honoured by the python-service archetype via `-c pyproject.toml` (gitops #725).
+# Accepted-risk noise, audited 2026-05-22:
+#   B108 — sandbox volume/tmpfs config dicts ("/tmp" bind/tmpfs mounts in
+#          security_service.py) and the TEST_PATHS allow-list constant in
+#          parameter_validation.py; these are container-hardening config, not
+#          host temp-file creation.
+#   B103 — os.chmod(output_path, 0o755) on a generated install script that must
+#          be executable (system_dependency_manager.py).
+skips = ["B108", "B103"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-v --cov=src --cov-report=term-missing --cov-fail-under=85 -m 'not integration and not e2e'"
+filterwarnings = [
+    "ignore::ResourceWarning",
+]
+markers = [
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests requiring running services",
+]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 85

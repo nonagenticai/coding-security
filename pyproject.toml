@@ -48,7 +48,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.1",
     "pytest-cov>=7.1.0",
-    "ruff==0.17.2",
+    "ruff==0.17.4",
     "fakeredis[lua]>=2.40.0",
     "ty==0.0.92",
 ]
@@ -65,7 +65,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.1",
     "pytest-cov>=7.1.0",
-    "ruff==0.17.2",
+    "ruff==0.17.4",
     "detect-secrets>=1.5.0",
     "fakeredis[lua]>=2.40.0",
     "ty==0.0.92",

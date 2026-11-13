@@ -48,9 +48,9 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.1",
     "pytest-cov>=7.1.0",
-    "ruff==0.17.2",
+    "ruff==0.17.4",
     "fakeredis[lua]>=2.40.0",
-    "ty==0.0.92",
+    "ty==0.0.100",
 ]
 
 [build-system]
@@ -65,10 +65,10 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.1",
     "pytest-cov>=7.1.0",
-    "ruff==0.17.2",
+    "ruff==0.17.4",
     "detect-secrets>=1.5.0",
     "fakeredis[lua]>=2.40.0",
-    "ty==0.0.92",
+    "ty==0.0.100",
     # PYSEC-2026-3721: pip 26.1.2 is vulnerable (transitive via pip-audit -> pip-api -> pip); explicit floor so a re-lock cannot regress
     "pip>=26.2.2",
     "pytest-xdist>=3.8.0",

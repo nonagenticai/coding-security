@@ -1,5 +1,9 @@
 # coding-security
 
+[![CI](https://github.com/nonagenticai/coding-security/actions/workflows/ci.yml/badge.svg)](https://github.com/nonagenticai/coding-security/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/nonagenticai/coding-security)](https://github.com/nonagenticai/coding-security/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Static security analysis service for the Code Graph Helper platform. Scans source code for security vulnerabilities, analyzes project dependencies for known CVEs, detects missing system-level dependencies, and generates sandbox configurations for safe code execution.
 
 This service is part of the `code_graph_helper` microservices suite and operates on "containers" -- named codebases managed by the `coding-containers` service.
@@ -201,3 +205,19 @@ Key runtime dependencies (see `pyproject.toml` for full list):
 - coding-client (shared auth middleware -- Istio header extraction)
 - OpenTelemetry (optional tracing)
 - packaging (version comparison for dependency analysis)
+
+## Security
+
+Report vulnerabilities privately through the repository's Security tab — see
+[`SECURITY.md`](SECURITY.md). Do not open a public issue for a security problem.
+
+## Contributing
+
+Issues and pull requests are welcome. See
+[`CONTRIBUTING.md`](https://github.com/nonagenticai/.github/blob/main/CONTRIBUTING.md) for the
+organisation-wide rules; setup, test and lint commands are in this README. Commits carry DCO
+sign-off.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).

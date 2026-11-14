@@ -89,7 +89,7 @@ ignore = ["E501"]
 python-version = "3.14"
 
 [tool.ty.rules]
-unresolved-import = "ignore"
+import-not-found = "ignore"
 
 [tool.bandit]
 # Honoured by the python-service archetype via `-c pyproject.toml` (gitops #725).

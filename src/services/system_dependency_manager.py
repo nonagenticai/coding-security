@@ -817,6 +817,10 @@ class SystemDependencyManager:
         self, packages: list[str], timeout: int = 300, max_retries: int = 2
     ) -> bool:
         """Install packages with retry logic."""
+        if not self.package_manager:
+            logger.error("No supported package manager detected")
+            return False
+
         for attempt in range(max_retries + 1):
             try:
                 if self.package_manager == PackageManager.APT:
@@ -862,7 +866,7 @@ class SystemDependencyManager:
                         capture_output=True,
                     )
                 else:
-                    pm_name = self.package_manager.value if self.package_manager else "unknown"
+                    pm_name = self.package_manager.value
                     logger.error(f"Unsupported package manager: {pm_name}")
                     return False
 

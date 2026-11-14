@@ -99,7 +99,7 @@ class ValidationErrorResponse(StandardErrorResponse):
         description="Human-readable error message",
     )
     # Preserve the non-null Pydantic field in specialized error schemas.
-    error_code: str = Field(  # ty: ignore[invalid-mutable-override]
+    error_code: str = Field(  # ty: ignore[incompatible-mutable-override]
         default="VALIDATION_ERROR",
         pattern=SAFE_STRING_PATTERN,
         description="Machine-readable error code",
@@ -140,7 +140,7 @@ class Error400Response(StandardErrorResponse):
         description="Human-readable error message",
     )
     # Preserve the non-null Pydantic field in specialized error schemas.
-    error_code: str = Field(  # ty: ignore[invalid-mutable-override]
+    error_code: str = Field(  # ty: ignore[incompatible-mutable-override]
         default="BAD_REQUEST",
         pattern=SAFE_STRING_PATTERN,
         description="Machine-readable error code",
@@ -156,7 +156,7 @@ class Error401Response(StandardErrorResponse):
         description="Human-readable error message",
     )
     # Preserve the non-null Pydantic field in specialized error schemas.
-    error_code: str = Field(  # ty: ignore[invalid-mutable-override]
+    error_code: str = Field(  # ty: ignore[incompatible-mutable-override]
         default="UNAUTHORIZED",
         pattern=SAFE_STRING_PATTERN,
         description="Machine-readable error code",
@@ -172,7 +172,7 @@ class Error403Response(StandardErrorResponse):
         description="Human-readable error message",
     )
     # Preserve the non-null Pydantic field in specialized error schemas.
-    error_code: str = Field(  # ty: ignore[invalid-mutable-override]
+    error_code: str = Field(  # ty: ignore[incompatible-mutable-override]
         default="FORBIDDEN",
         pattern=SAFE_STRING_PATTERN,
         description="Machine-readable error code",
@@ -188,7 +188,7 @@ class Error404Response(StandardErrorResponse):
         description="Human-readable error message",
     )
     # Preserve the non-null Pydantic field in specialized error schemas.
-    error_code: str = Field(  # ty: ignore[invalid-mutable-override]
+    error_code: str = Field(  # ty: ignore[incompatible-mutable-override]
         default="NOT_FOUND",
         pattern=SAFE_STRING_PATTERN,
         description="Machine-readable error code",
@@ -208,7 +208,7 @@ class Error500Response(StandardErrorResponse):
         description="Human-readable error message",
     )
     # Preserve the non-null Pydantic field in specialized error schemas.
-    error_code: str = Field(  # ty: ignore[invalid-mutable-override]
+    error_code: str = Field(  # ty: ignore[incompatible-mutable-override]
         default="INTERNAL_ERROR",
         pattern=SAFE_STRING_PATTERN,
         description="Machine-readable error code",

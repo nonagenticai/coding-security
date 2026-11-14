@@ -250,7 +250,9 @@ async def list_workspace_dependencies(
         selected = normalize_repo(repo) if repo is not None else None
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    ecosystems = {"pypi", "crates.io"} if ecosystem == "auto" else {ecosystem}
+    ecosystems: set[Literal["pypi", "crates.io"]] = (
+        {"pypi", "crates.io"} if ecosystem == "auto" else {ecosystem}
+    )
 
     # Tenant gate FIRST: nothing runs for a name that is not the caller's.
     workspace = await validate_and_get_container_for_tenant(container_name, tenant_id)

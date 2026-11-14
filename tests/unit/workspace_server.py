@@ -22,6 +22,16 @@ from pathlib import Path
 #: takes its remote (exec) path, as it does in the cluster.
 REMOTE_CODEBASE_PATH = "/nonexistent-remote-workspace"
 
+#: The only programs this stand-in will run — exactly the ones the service under
+#: test issues: ``find`` and ``cat`` for reads, ``python -c`` for the inspect
+#: step. Anything else is refused rather than executed, so a regression that
+#: starts shelling out to something new fails here loudly instead of running it.
+ALLOWED_PROGRAMS = frozenset({"find", "cat", "python"})
+
+
+class RefusedCommandError(Exception):
+    """The posted ``argv[0]`` is not one this stand-in is allowed to run."""
+
 
 class WorkspaceServer:
     def __init__(
@@ -58,8 +68,14 @@ class WorkspaceServer:
 
     def _exec(self, body: dict) -> dict:
         argv = list(body["command"])
+        program = argv[0] if argv else ""
+        if program not in ALLOWED_PROGRAMS:
+            raise RefusedCommandError(
+                f"refusing to run {program!r}: this stand-in only runs "
+                f"{', '.join(sorted(ALLOWED_PROGRAMS))}"
+            )
         self.commands.append(argv)
-        if argv and argv[0] == "python":
+        if program == "python":
             argv[0] = sys.executable
         proc = subprocess.run(
             argv,
@@ -126,6 +142,11 @@ class WorkspaceServer:
                     self._reply(404, {"detail": "not found"})
                     return
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-                self._reply(200, server._exec(body))
+                try:
+                    result = server._exec(body)
+                except RefusedCommandError as exc:
+                    self._reply(403, {"detail": str(exc)})
+                    return
+                self._reply(200, result)
 
         return Handler

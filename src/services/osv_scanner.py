@@ -30,6 +30,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -67,6 +68,19 @@ BASE_BACKOFF_SECONDS = 1
 MAX_BACKOFF_SECONDS = 10
 REQUESTS_PER_SECOND = 10
 CACHE_DURATION_HOURS = 24
+
+#: Hosts whose vulnerability-detail pages carry the CVE id in the URL. This is a
+#: parsed-hostname test, never a substring one: ``https://evil.example/nvd.nist.gov/CVE-...``
+#: must not be treated as a catalogue reference.
+CVE_REFERENCE_HOSTS = ("cve.mitre.org", "nvd.nist.gov")
+
+
+def _is_cve_reference_url(url: str) -> bool:
+    """Whether *url*'s host is a CVE catalogue (exact host or a subdomain of one)."""
+    host = urlsplit(url).hostname
+    return host is not None and any(
+        host == catalogue or host.endswith(f".{catalogue}") for catalogue in CVE_REFERENCE_HOSTS
+    )
 
 
 class OSVScanner:
@@ -318,7 +332,7 @@ class OSVScanner:
                     url = ref.get("url", "")
                     references.append(url)
 
-                    if "cve.mitre.org" in url or "nvd.nist.gov" in url:
+                    if _is_cve_reference_url(url):
                         # Extract CVE ID from URL
                         cve_match = re.search(r"(CVE-\d{4}-\d{4,})", url)
                         if cve_match:

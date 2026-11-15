@@ -198,6 +198,27 @@ class TestOSVScanner:
         assert result[0].id == "GHSA-1234"
         assert result[0].severity == "HIGH"
 
+    def test_parse_osv_response_cve_reference_requires_catalogue_host(self, scanner):
+        """A catalogue name embedded in a URL's path or host prefix is not a reference."""
+        data = {
+            "vulns": [
+                {
+                    "id": "GHSA-5678",
+                    "summary": "Test vuln",
+                    "affected": [{"package": {"name": "django"}}],
+                    "references": [
+                        {"url": "https://evil.example/nvd.nist.gov/CVE-2023-1111"},
+                        {"url": "https://nvd.nist.gov.evil.example/CVE-2023-2222"},
+                        {"url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-3333"},
+                    ],
+                }
+            ]
+        }
+        result = scanner._parse_osv_response(data, "PyPI", "django")
+        assert len(result) == 1
+        # Only the real catalogue host's CVE id is extracted.
+        assert result[0].cve_ids == ["CVE-2023-3333"]
+
     def test_parse_osv_response_empty(self, scanner):
         """Empty vulns returns empty list."""
         result = scanner._parse_osv_response({"vulns": []}, "PyPI", "django")

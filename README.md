@@ -8,11 +8,15 @@ Static security analysis service for the Code Graph Helper platform. Scans sourc
 
 This service is part of the `code_graph_helper` microservices suite and operates on "containers" -- named codebases managed by the `coding-containers` service.
 
-## Port: 8693
+| | |
+|---|---|
+| **Runtime** | Python 3.14, FastAPI + Uvicorn |
+| **Depends on** | `coding-containers`, Redis, and the baked offline OSV database |
+| **Runs on** | Kubernetes (container), listening on port 8693 |
 
 ## Authentication
 
-Istio ext_authz validates license tokens on incoming requests. The `coding-client` library provides `AuthMiddleware` which reads Istio-injected headers (enabled when `ENABLE_AUTH=true`). Tenant isolation is enforced via the `X-Tenant-Id` header set by the ext_authz filter after license validation; the service falls back to `DEFAULT_TENANT_ID` if the header is absent. No direct Keycloak or JWT validation occurs in this service.
+Istio ext_authz validates license tokens on incoming requests. The `coding-client` library provides `AuthMiddleware`, which reads Istio-injected headers (enabled when `ENABLE_AUTH=true`). Tenant identity comes from the `X-Tenant-Id` header (or a `tenant_id` query parameter) set by the ext_authz filter after license validation. There is no unconditional `n8n-dev` fallback: `coding_client.auth.tenant` falls back to `DEFAULT_TENANT_ID` only for requests from trusted networks (loopback/RFC1918), and otherwise returns 401. `DEFAULT_TENANT_ID` itself has no default — when unset, credential-less fallback is refused. No direct Keycloak or JWT validation occurs in this service.
 
 ## Architecture
 
@@ -24,7 +28,7 @@ coding-security (FastAPI, port 8693)
   +-- /api/dependencies/system/* -- System-level dependency detection + script generation
   |
   +-- coding-containers:8691   -- HTTP calls to resolve container metadata
-  +-- Redis                    -- Optional cache for security validation results
+  +-- Redis                    -- Validation cache + durable async-scan queue (required in production)
   +-- /opt/osv-db (baked)      -- Offline OSV database (PyPI, crates.io, npm); see below
 ```
 
@@ -41,7 +45,7 @@ coding-security (FastAPI, port 8693)
 
 ## API Routes
 
-All routes require tenant identification via `X-Tenant-Id` header (falls back to `DEFAULT_TENANT_ID` env var).
+All routes require tenant identification via the `X-Tenant-Id` header (or a `tenant_id` query parameter). Credential-less callers from trusted networks fall back to `DEFAULT_TENANT_ID` only when that variable is configured; otherwise the request is rejected with 401.
 
 ### Health / Root
 
@@ -86,28 +90,67 @@ Both prefixes serve the same router (dual-mount for compatibility).
 
 ## Configuration
 
-Environment variables (all optional with defaults):
+Settings are Pydantic fields in `src/config/settings.py`; environment variable names are the
+field names and are case-insensitive. In production (`ENVIRONMENT=production`) startup fails if
+`DATABASE_URL`, `REDIS_URL`, `CONTAINERS_SERVICE_URL` or `DOCKER_REGISTRY_URL` is empty.
+
+### Core settings
 
 | Variable | Default | Description |
 |---|---|---|
 | `SERVICE_NAME` | `coding-security` | Service name for logging and telemetry |
-| `VERSION` | `1.0.0` | Service version |
-| `ENVIRONMENT` | `production` | Environment name |
-| `PORT` | `8693` | Listening port |
+| `VERSION` | `1.0.0` | Service version reported by `/health` and the OpenAPI document (the package version is `1.2.0` in `pyproject.toml`) |
+| `ENVIRONMENT` | `production` | Environment name; any other value skips the required-in-production check |
+| `PORT` | `8693` | Application listening port |
+| `METRICS_PORT` | `9693` | Dedicated Prometheus listener; `0` binds an ephemeral port (tests) |
+| `METRICS_SERVER_ENABLED` | `true` | Enable the dedicated metrics listener |
 | `LOG_LEVEL` | `INFO` | Python log level |
-| `ENABLE_AUTH` | `true` | Enable Istio auth middleware |
-| `ENABLE_DOCS` | `false` | Enable OpenAPI docs (setting exists but docs are always mounted in app_factory) |
-| `DEFAULT_TENANT_ID` | `n8n-dev` | Fallback tenant when no header present |
-| `DATABASE_URL` | `postgresql+psycopg://...` | PostgreSQL connection (for future use, not actively queried) |
-| `REDIS_URL` | `redis://redis:6379/0` | Redis for caching security validation results |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | _(unset)_ | OpenTelemetry collector endpoint; telemetry disabled if unset |
-| `CONTAINERS_SERVICE_URL` | `http://coding-containers:8691` | URL of coding-containers service for container metadata lookups |
+| `ENABLE_AUTH` | `true` | Enable the `coding-client` auth/tenant middleware |
+| `ENABLE_DOCS` | `false` | Setting exists, but `/docs` and `/openapi.json` are always mounted |
+| `DATABASE_URL` | `""` | PostgreSQL connection string; required in production, not actively queried (the DB layer is not wired) |
+| `REDIS_URL` | `""` | Redis connection string; required in production; backs the validation cache and the durable scan queue |
+| `CONTAINERS_SERVICE_URL` | `""` | Base URL of `coding-containers`; required in production |
+| `DOCKER_REGISTRY_URL` | `""` | Registry used for image scans; required in production |
+| `DOCKER_REGISTRY_USERNAME` | `registry` | Registry username for image scans |
+| `DOCKER_REGISTRY_PASSWORD` | `""` | Registry password for image scans |
+| `WORKSPACE_ROOT` | `/workspace` | Workspace root inside a `coding-containers` workspace pod |
+| `GITHUB_SERVICE_URL` | `""` | Optional; needed only for `/upgrade` and `/upgrade-major` with `commit=true` or `open_pr=true` |
 | `CORS_ORIGINS` | `["*"]` | Allowed CORS origins |
+| `NVD_API_KEY` | _(unset)_ | Optional NVD API key |
+| `OTEL_ENDPOINT` | `""` | Present in `Settings` but not wired; tracing reads `OTLP_TRACES_ENDPOINT` |
+| `DEFAULT_TENANT_ID` | _(unset)_ | Fallback tenant for credential-less requests from trusted networks. Read by `coding-client`, not `Settings`; unset means such requests are rejected |
+| `OTLP_TRACES_ENDPOINT` | _(unset)_ | Tracing exporter URL including `/v1/traces`, read by `coding-client`'s `setup_tracing`; unset disables tracing |
+
+### Scanning and worker tuning
+
+| Variable | Default | Description |
+|---|---|---|
+| `TRIVY_SCAN_TIMEOUT` | `300` | Trivy scan timeout in seconds |
+| `GRYPE_SCAN_TIMEOUT` | `300` | Grype scan timeout in seconds |
+| `SYFT_SCAN_TIMEOUT` | `180` | Syft scan timeout in seconds |
+| `SECURITY_SCAN_BUDGET_SECONDS` | `60.0` | Synchronous security-scan wall-clock budget |
+| `SECURITY_FETCH_TIMEOUT_SECONDS` | `120.0` | File-fetch timeout for scans |
+| `SECURITY_ASYNC_SCAN_BUDGET_SECONDS` | `300.0` | Async security-scan wall-clock budget |
+| `SECURITY_SCAN_TASK_TTL_SECONDS` | `86400` | Redis TTL for completed async scan records |
+| `SECURITY_SCAN_STALE_AFTER_SECONDS` | `600.0` | Age after which a running async job is reported as stale/failed |
+| `DEPENDENCY_SCAN_ASYNC_BUDGET_SECONDS` | `300.0` | Async dependency-scan wall-clock budget |
+| `SCAN_WORKER_ENABLED` | `true` | Enable the Redis Streams scan worker |
+| `SCAN_WORKER_CONCURRENCY` | `2` | Concurrent worker read loops |
+| `SCAN_STREAM` | `security:scan:jobs` | Redis stream name for scan jobs |
+| `SCAN_CONSUMER_GROUP` | `coding-security-scanner` | Consumer group name |
+| `SCAN_CONSUMER_NAME` | `worker-0` | Consumer name |
+| `SCAN_WORKER_BLOCK_MS` | `5000` | Stream read block time in milliseconds |
+| `SCAN_RECLAIM_INTERVAL_SECONDS` | `60.0` | Pending-message reclaim interval |
+| `SCAN_RECLAIM_MIN_IDLE_SECONDS` | `900` | Minimum idle time before a pending message is reclaimed |
+| `SCAN_MAX_DELIVERIES` | `3` | Maximum deliveries before a job is dead-lettered |
+| `SCAN_STREAM_MAXLEN` | `10000` | Approximate stream length cap |
+| `OSV_OFFLINE_DB_DIR` | `/opt/osv-db` | Directory of the baked offline OSV database |
+| `OSV_DB_MAX_AGE_DAYS` | `10` | Age at which `/health` reports the baked OSV database as stale |
 
 ## Dependencies on Other Services
 
-- **coding-containers** (`http://coding-containers:8691`) -- resolves container names to codebase paths, file listings. All container-scoped endpoints depend on this.
-- **Redis** -- optional; caches `SecurityValidationResult` objects (1-hour TTL). Service operates without it.
+- **coding-containers** -- resolves container names to codebase paths and file listings. The URL comes from `CONTAINERS_SERVICE_URL` (required in production; `http://coding-containers:8691` in-cluster). All container-scoped endpoints depend on this.
+- **Redis** -- `REDIS_URL` is required in production by the settings validator. Redis caches `SecurityValidationResult` objects (1-hour TTL) and backs the durable async-scan stream/worker.
 - **OSV data** -- in production the dependency analyzer reads the **baked offline OSV database**
   (`/opt/osv-db`, built at image time from the PyPI, crates.io and npm `all.zip` exports) because
   the pod's egress to `api.osv.dev` is blocked by the ambient-mesh policy by design. The live OSV
@@ -125,9 +168,9 @@ Environment variables (all optional with defaults):
 ## Running Locally
 
 ```bash
-# With uv
+# With uv (ENVIRONMENT=testing skips the production required-env check)
 uv sync
-uv run uvicorn main:app --host 0.0.0.0 --port 8693
+ENVIRONMENT=testing PYTHONPATH=src uv run uvicorn main:app --host 0.0.0.0 --port 8693
 
 # With Docker
 docker compose up coding-security
@@ -141,12 +184,12 @@ src/
   app_factory.py           -- FastAPI app constructor, lifespan, middleware, router mounting
   dependencies.py          -- DI container (SystemSecurityService singleton)
   auth/
-    tenant.py              -- require_tenant dependency (X-Tenant-Id extraction)
+    tenant.py              -- re-exports coding-client tenant middleware (X-Tenant-Id, trusted-CIDR fallback)
   config/
     settings.py            -- Pydantic BaseSettings (env vars)
     security_config.py     -- Dangerous-pattern defs, sandbox config presets
   routers/
-    security.py            -- /api/security/* endpoints
+    security/              -- /api/security/* endpoints
     dependencies.py        -- /api/dependencies/* endpoints
     system_dependencies.py -- /api/dependencies/system/* endpoints
   services/
@@ -191,9 +234,12 @@ major releases: `coding-client` requires Pydantic AI 1.x, which requires FastMCP
 
 ## CI/CD
 
-GitHub Actions workflow: `ruff + ty → build amd64 → smoke test → push`
-
-Image pushed to `192.168.1.114:5000/coding-security:sha-<commit>`, promoted to `:latest` on success. Flux auto-deploys to K3s.
+`.github/workflows/ci.yml` calls the public `nonagenticai/ci-workflows/python-service.yml`
+workflow on GitHub-hosted runners: lint, type-check and tests, an amd64 image build, a smoke test
+that requires a fresh baked OSV database, and a push to
+`ghcr.io/nonagenticai/coding-security`. There is no deploy job -- Flux watches this service's
+ImagePolicy and rolls the image when it changes. A weekly scheduled rebuild keeps the baked OSV
+database current.
 
 ## Runtime Dependencies
 
@@ -202,7 +248,7 @@ Key runtime dependencies (see `pyproject.toml` for full list):
 - Pydantic + pydantic-settings
 - httpx (HTTP client for coding-containers and OSV.dev)
 - redis (async Redis client)
-- coding-client (shared auth middleware -- Istio header extraction)
+- coding-client (shared auth/tenant middleware, tracing)
 - OpenTelemetry (optional tracing)
 - packaging (version comparison for dependency analysis)
 
